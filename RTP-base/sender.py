@@ -33,5 +33,5 @@ def send(receiver_ip, receiver_port, window_size, message_type, data):
 
 if __name__ == "__main__":
     """SEND START MESSAGE"""
-    send(receiver_ip=config.recv_ip, receiver_port=config.recv_port, message_type=2, window_size=config.window_size, data="hihi\0")
+    send(receiver_ip=config.recv_ip, receiver_port=config.recv_port, message_type= config.message_type.DATA, window_size=config.window_size, data="chu bin bao lan\0")
     """SEND DATA"""

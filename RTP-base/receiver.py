@@ -7,7 +7,7 @@ from utils import PacketHeader, compute_checksum
 
 def send_ACK (seq_num, addr):
     s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-    pkt_header = PacketHeader(type = 3,seq_num= seq_num)
+    pkt_header = PacketHeader(type = config.message_type.ACK,seq_num= seq_num)
     pkt_header.checksum = compute_checksum (pkt_header)
     s.sendto (bytes(pkt_header),addr) 
 
