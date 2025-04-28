@@ -13,7 +13,7 @@ def sender(receiver_ip, receiver_port, window_size):
 
     message = sys.stdin.buffer.read()
     if not message:
-        print("Error: No data to send. Please provide input using stdin or `< input.txt`.")
+        print("Error: No data to send.")
         s.close()
         return
 
@@ -27,6 +27,7 @@ def sender(receiver_ip, receiver_port, window_size):
     start_pkt.checksum = compute_checksum(start_pkt)
     s.sendto(bytes(start_pkt), receiver_addr)
 
+    # Receive ACK for START packet
     try:
         data, _ = s.recvfrom(2048)
         ack = PacketHeader(data)
@@ -43,7 +44,7 @@ def sender(receiver_ip, receiver_port, window_size):
     base = 1
     next_seq = 1
     window = {}
-
+    start_time = time.time()
     while base <= total_chunks:
         while next_seq < base + window_size and next_seq <= total_chunks:
             payload = chunks[next_seq - 1]
@@ -51,6 +52,9 @@ def sender(receiver_ip, receiver_port, window_size):
             pkt.checksum = compute_checksum(pkt / payload)
             full_pkt = pkt / payload
             s.sendto(bytes(full_pkt), receiver_addr)
+            # Set timer for sending first packet of window 
+            if base == next_seq: 
+                start_time = time.time()
             window[next_seq] = full_pkt
             next_seq += 1
 
@@ -63,10 +67,16 @@ def sender(receiver_ip, receiver_port, window_size):
                 continue
             if ack.type == config.message_type.ACK and ack.seq_num > base:
                 base = ack.seq_num
+                # Reset timer when received ack 
+                start_time = time.time()
                 for seq in list(window):
                     if seq < base:
                         del window[seq]
         except socket.timeout:
+            pass 
+
+        if time.time() - start_time > TIME_OUT: 
+            # Retransmission when time out
             for pkt in window.values():
                 s.sendto(bytes(pkt), receiver_addr)
 
