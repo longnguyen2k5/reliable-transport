@@ -39,7 +39,6 @@ def receive_ACK():
     
     while is_running:
         try:
-            s.settimeout(0.1)  # Short timeout to check is_running flag frequently
             pkt, _ = s.recvfrom(2048)
             
             if not is_running:
@@ -112,6 +111,7 @@ def send_packet(recv_ip, recv_port, data, seq):
 def send_data(recv_ip , recv_port ,data, window_size):
     global seq_num, base, is_running,ws, timeout, num_packet
     
+    s.settimeout(timeout)
     # Convert string to bytes if needed
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -133,7 +133,8 @@ def send_data(recv_ip , recv_port ,data, window_size):
     num_packet = len (chunks)
     
     #Because socket buffer would be store old packet, we need waiting socket clear buffer
-    wait_for_empty_buffer()
+    flush_socket_buffer()
+
     # Start the ACK receiver thread
     ack_thread = threading.Thread(target=receive_ACK, daemon=True)
     ack_thread.start()
@@ -184,16 +185,26 @@ def send_data(recv_ip , recv_port ,data, window_size):
     print("Sender terminated")
     sys.stdout.flush()
 
-def wait_for_empty_buffer():
-    s.settimeout(0.1)
+def flush_socket_buffer():
+    s.setblocking(False)
     try:
         while True:
-            pkt, _ = s.recvfrom(2048) 
-            header = PacketHeader(pkt[:16])
-            if header.type == config.message_type.ACK:
-                continue
-    except socket.timeout:
-        pass 
+            try:
+                s.recvfrom(2048)
+            except BlockingIOError:
+                break  
+    finally:
+        s.setblocking(True)  
+
+# def wait_for_empty_buffer():
+#     try:
+#         while True:
+#             pkt, _ = s.recvfrom(2048) 
+#             header = PacketHeader(pkt[:16])
+#             if header.type == config.message_type.ACK:
+#                 continue
+#     except socket.timeout:
+#         pass 
 
 def send_start_message(recv_ip, recv_port):
     start_header = PacketHeader(
@@ -213,7 +224,6 @@ def send_start_message(recv_ip, recv_port):
 
 def wait_for_start_ack(recv_ip, recv_port):
     global is_running, base, seq_num
-    retry_interval = 0.5 
     last_send_time = 0
     start_time = time.time()
 
@@ -228,12 +238,11 @@ def wait_for_start_ack(recv_ip, recv_port):
             sys.stdout.flush()
             break
         
-        if current_time - last_send_time > retry_interval:
+        if current_time - last_send_time > timeout:
             send_start_message(recv_ip=recv_ip, recv_port=recv_port)
             last_send_time = current_time
         
         try:
-            s.settimeout(0.1)
             pkt, addr = s.recvfrom(2048)
             header = PacketHeader(pkt[:16])
             if header.type == config.message_type.ACK and header.seq_num == 1:

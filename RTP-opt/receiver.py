@@ -66,7 +66,7 @@ def receiver(receiver_ip, receiver_port, window_size):
                     sys.stdout.flush()
                     
                     # Drop packets outside window
-                    if seq_num >= expected_seq + window_size:
+                    if seq_num >= expected_seq + 2 * window_size:
                         send_ACK(s, expected_seq, address)
                         continue
                     
@@ -87,7 +87,7 @@ def receiver(receiver_ip, receiver_port, window_size):
                         send_ACK(s, expected_seq, address)
                     
                     # Buffer out-of-order packet
-                    elif seq_num > expected_seq and seq_num < expected_seq + window_size:
+                    elif seq_num > expected_seq and seq_num < expected_seq + 2* window_size:
                         buffer[seq_num] = msg
                         send_ACK(s, seq_num + 1, address)
                     

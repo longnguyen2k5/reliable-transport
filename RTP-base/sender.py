@@ -6,7 +6,7 @@ import config
 from utils import PacketHeader, compute_checksum
 
 TIME_OUT = 0.5
-
+time_stamp = {}
 def sender(receiver_ip, receiver_port, window_size):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(TIME_OUT)
@@ -55,6 +55,7 @@ def sender(receiver_ip, receiver_port, window_size):
             # Set timer for sending first packet of window 
             if base == next_seq: 
                 start_time = time.time()
+            time_stamp[next_seq] = time.time()
             window[next_seq] = full_pkt
             next_seq += 1
 
@@ -67,6 +68,8 @@ def sender(receiver_ip, receiver_port, window_size):
                 continue
             if ack.type == config.message_type.ACK and ack.seq_num > base:
                 base = ack.seq_num
+                if base in time_stamp:
+                    start_time = time_stamp[base]
                 # Reset timer when received ack 
                 start_time = time.time()
                 for seq in list(window):
